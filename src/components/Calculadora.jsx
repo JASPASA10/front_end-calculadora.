@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import '../styles/Calculadora.css'
 import Resultado from "./Resultado";
 
@@ -29,33 +29,102 @@ function Calculadora(){
         e.preventDefault();
         const tipo = e.target.value;
         setTipoConversion(tipo);
+    }
+
+    // Funciones de conversión directas en el frontend
+    function convertirTiempo(valor, desde, hacia) {
+        const conversiones = {
+            'hora-meses': valor * 0.00136986,
+            'hora-dias': valor / 24,
+            'meses-horas': valor * 730.5,
+            'meses-dias': valor * 30.44,
+            'dias-horas': valor * 24,
+            'dias-meses': valor / 30.44,
+            'años-meses': valor * 12,
+            'años-dias': valor * 365.25,
+            'años-horas': valor * 8766
+        };
+        const clave = `${desde}-${hacia}`;
+        return conversiones[clave] ? conversiones[clave] * valor : valor;
+    }
+
+    function convertirPeso(valor, desde, hacia) {
+        const conversiones = {
+            'kg-g': valor * 1000,
+            'kg-lb': valor * 2.20462,
+            'g-kg': valor / 1000,
+            'g-lb': valor * 0.00220462,
+            'lb-kg': valor * 0.453592,
+            'lb-g': valor * 453.592
+        };
+        const clave = `${desde}-${hacia}`;
+        return conversiones[clave] ? conversiones[clave] * valor : valor;
+    }
+
+    function convertirTemperatura(valor, desde, hacia) {
+        if (desde === hacia) return valor;
         
-        let endpoint = '';
-        switch(tipo) {
-            case 'tiempo':
-                endpoint = 'convertir-tiempo';
-                break;
-            case 'peso':
-                endpoint = 'convertir-peso';
-                break;
-            case 'temperatura':
-                endpoint = 'convertir-temperatura';
-                break;
-            case 'moneda':
-                endpoint = 'convertir-moneda';
-                break;
+        let celsius = valor;
+        if (desde === 'f') {
+            celsius = (valor - 32) * 5/9;
+        } else if (desde === 'k') {
+            celsius = valor - 273.15;
         }
         
-        fetch(`http://localhost:3500/v1/calculadora/${endpoint}`, {
-            method: 'POST',
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({valor: valorConversion, desde, hacia})
-        })
-            .then(res => res.json())
-            .then(responseData => {
-                setResultado(`${valorConversion} ${desde} = ${responseData.resultado} ${hacia}`)
-            })
+        if (hacia === 'f') {
+            return (celsius * 9/5) + 32;
+        } else if (hacia === 'k') {
+            return celsius + 273.15;
+        }
+        return celsius;
     }
+
+    function convertirMoneda(valor, desde, hacia) {
+        const tasas = {
+            'usd-cop': 4100,
+            'usd-eur': 0.85,
+            'cop-usd': 1/4100,
+            'cop-eur': 0.00021,
+            'eur-usd': 1.18,
+            'eur-cop': 4820
+        };
+        const clave = `${desde}-${hacia}`;
+        return tasas[clave] ? tasas[clave] * valor : valor;
+    }
+
+    // Función para convertir automáticamente cuando cambien los valores
+    function convertirAutomaticamente() {
+        if (valorConversion && desde && hacia && tipoConversion) {
+            let resultado = 0;
+            const valor = parseFloat(valorConversion);
+            
+            switch(tipoConversion) {
+                case 'tiempo':
+                    resultado = convertirTiempo(valor, desde, hacia);
+                    break;
+                case 'peso':
+                    resultado = convertirPeso(valor, desde, hacia);
+                    break;
+                case 'temperatura':
+                    resultado = convertirTemperatura(valor, desde, hacia);
+                    break;
+                case 'moneda':
+                    resultado = convertirMoneda(valor, desde, hacia);
+                    break;
+            }
+            
+            if (tipoConversion === 'temperatura') {
+                setResultado(`${valor}°${desde.toUpperCase()} = ${resultado.toFixed(2)}°${hacia.toUpperCase()}`);
+            } else {
+                setResultado(`${valor} ${desde} = ${resultado.toFixed(4)} ${hacia}`);
+            }
+        }
+    }
+
+    // Efecto para convertir automáticamente
+    useEffect(() => {
+        convertirAutomaticamente();
+    }, [valorConversion, desde, hacia, tipoConversion]);
 
     return (
         <div className="container">
@@ -78,6 +147,14 @@ function Calculadora(){
                 <h3>Conversiones</h3>
                 <form>
                     <input type="number" className="number" placeholder="Valor a convertir" onChange={(e)=>{setValorConversion(e.target.value)}}/><br />
+                    
+                    {/* Botones de tipo de conversión */}
+                    <div className="conversion-buttons">
+                        <input type="button" className="btnConversion" value="tiempo" onClick={handleConversion}/>
+                        <input type="button" className="btnConversion" value="peso" onClick={handleConversion}/>
+                        <input type="button" className="btnConversion" value="temperatura" onClick={handleConversion}/>
+                        <input type="button" className="btnConversion" value="moneda" onClick={handleConversion}/>
+                    </div>
                     
                     {/* Selectores de conversión */}
                     <div className="conversion-selectors">
@@ -146,14 +223,6 @@ function Calculadora(){
                                 </>
                             )}
                         </select>
-                    </div>
-                    
-                    {/* Botones de tipo de conversión */}
-                    <div className="conversion-buttons">
-                        <input type="submit" className="btnConversion" value="tiempo" onClick={handleConversion}/>
-                        <input type="submit" className="btnConversion" value="peso" onClick={handleConversion}/>
-                        <input type="submit" className="btnConversion" value="temperatura" onClick={handleConversion}/>
-                        <input type="submit" className="btnConversion" value="moneda" onClick={handleConversion}/>
                     </div>
                 </form>
             </div>
