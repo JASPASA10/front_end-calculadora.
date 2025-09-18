@@ -14,15 +14,23 @@ function Calculadora(){
     function handleSubmit(e){
         e.preventDefault();
         const operacion = e.target.value;
-        fetch(`http://localhost:3500/v1/calculadora/${operacion}`, {
-            method: 'POST',
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({number1, number2})
-        })
-            .then(res =>res.json())
-            .then(responseData => {
-                setResultado(responseData.resultado)
-            })
+        const num1 = parseFloat(number1);
+        const num2 = parseFloat(number2);
+        
+        let resultado = 0;
+        switch(operacion) {
+            case 'sumar':
+                resultado = num1 + num2;
+                break;
+            case 'restar':
+                resultado = num1 - num2;
+                break;
+            case 'multiplicar':
+                resultado = num1 * num2;
+                break;
+        }
+        
+        setResultado(resultado.toString());
     }
 
     function handleConversion(e){
@@ -31,65 +39,88 @@ function Calculadora(){
         setTipoConversion(tipo);
     }
 
-    // Funciones de conversión directas en el frontend
+    // Funciones de conversión directas en el frontend con datos reales
     function convertirTiempo(valor, desde, hacia) {
         const conversiones = {
-            'hora-meses': valor * 0.00136986,
-            'hora-dias': valor / 24,
-            'meses-horas': valor * 730.5,
-            'meses-dias': valor * 30.44,
-            'dias-horas': valor * 24,
-            'dias-meses': valor / 30.44,
-            'años-meses': valor * 12,
-            'años-dias': valor * 365.25,
-            'años-horas': valor * 8766
+            // Desde horas
+            'hora-dias': valor / 24,           // 24 horas = 1 día
+            'hora-meses': valor / (24 * 30.44), // 1 mes = 30.44 días promedio
+            'hora-años': valor / (24 * 365.25), // 1 año = 365.25 días
+            
+            // Desde días
+            'dias-horas': valor * 24,          // 1 día = 24 horas
+            'dias-meses': valor / 30.44,       // 1 mes = 30.44 días
+            'dias-años': valor / 365.25,       // 1 año = 365.25 días
+            
+            // Desde meses
+            'meses-horas': valor * 24 * 30.44, // 1 mes = 730.56 horas
+            'meses-dias': valor * 30.44,       // 1 mes = 30.44 días
+            'meses-años': valor / 12,          // 12 meses = 1 año
+            
+            // Desde años
+            'años-horas': valor * 24 * 365.25, // 1 año = 8766 horas
+            'años-dias': valor * 365.25,       // 1 año = 365.25 días
+            'años-meses': valor * 12           // 1 año = 12 meses
         };
         const clave = `${desde}-${hacia}`;
-        return conversiones[clave] ? conversiones[clave] * valor : valor;
+        return conversiones[clave] || valor;
     }
 
     function convertirPeso(valor, desde, hacia) {
         const conversiones = {
-            'kg-g': valor * 1000,
-            'kg-lb': valor * 2.20462,
-            'g-kg': valor / 1000,
-            'g-lb': valor * 0.00220462,
-            'lb-kg': valor * 0.453592,
-            'lb-g': valor * 453.592
+            // Desde kilogramos
+            'kg-g': valor * 1000,        // 1 kg = 1000 gramos
+            'kg-lb': valor * 2.20462,    // 1 kg = 2.20462 libras
+            
+            // Desde gramos
+            'g-kg': valor / 1000,        // 1000 g = 1 kg
+            'g-lb': valor / 453.592,     // 453.592 g = 1 lb
+            
+            // Desde libras
+            'lb-kg': valor / 2.20462,    // 2.20462 lb = 1 kg
+            'lb-g': valor * 453.592      // 1 lb = 453.592 gramos
         };
         const clave = `${desde}-${hacia}`;
-        return conversiones[clave] ? conversiones[clave] * valor : valor;
+        return conversiones[clave] || valor;
     }
 
     function convertirTemperatura(valor, desde, hacia) {
         if (desde === hacia) return valor;
         
+        // Convertir a Celsius primero
         let celsius = valor;
         if (desde === 'f') {
-            celsius = (valor - 32) * 5/9;
+            celsius = (valor - 32) * 5/9;  // Fahrenheit a Celsius
         } else if (desde === 'k') {
-            celsius = valor - 273.15;
+            celsius = valor - 273.15;      // Kelvin a Celsius
         }
+        // Si ya está en Celsius, no hacer nada
         
+        // Convertir desde Celsius
         if (hacia === 'f') {
-            return (celsius * 9/5) + 32;
+            return (celsius * 9/5) + 32;   // Celsius a Fahrenheit
         } else if (hacia === 'k') {
-            return celsius + 273.15;
+            return celsius + 273.15;       // Celsius a Kelvin
         }
-        return celsius;
+        return celsius; // Ya está en Celsius
     }
 
     function convertirMoneda(valor, desde, hacia) {
         const tasas = {
-            'usd-cop': 4100,
-            'usd-eur': 0.85,
-            'cop-usd': 1/4100,
-            'cop-eur': 0.00021,
-            'eur-usd': 1.18,
-            'eur-cop': 4820
+            // Desde USD
+            'usd-cop': 4100,      // 1 USD = 4100 COP (aproximado)
+            'usd-eur': 0.92,      // 1 USD = 0.92 EUR (aproximado)
+            
+            // Desde COP
+            'cop-usd': 1/4100,    // 1 COP = 0.00024 USD
+            'cop-eur': 1/4450,    // 1 COP = 0.00022 EUR
+            
+            // Desde EUR
+            'eur-usd': 1.09,      // 1 EUR = 1.09 USD (aproximado)
+            'eur-cop': 4450       // 1 EUR = 4450 COP (aproximado)
         };
         const clave = `${desde}-${hacia}`;
-        return tasas[clave] ? tasas[clave] * valor : valor;
+        return tasas[clave] || valor;
     }
 
     // Función para convertir automáticamente cuando cambien los valores
